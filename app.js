@@ -1,0 +1,44 @@
+(() => {
+ const data = window.PORTFOLIO_DATA || {};
+ const $ = (s, r=document) => r.querySelector(s);
+ const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+ const safeUrl = v => /^(https?:\/\/|mailto:|assets\/)/i.test(String(v||"")) ? String(v) : "";
+ const profile = data.profile || {};
+ $("#brandName").textContent = profile.shortName || profile.name || "Portfolio";
+ $("#footerName").textContent = profile.shortName || profile.name || "Portfolio";
+ $("#heroHeadline").innerHTML = esc(profile.headline || "Understanding policy. Improving practice.").replace(". ", ".<br><span class=\"gradient-text\">") + (String(profile.headline||"").includes(". ") ? "</span>" : "");
+ // Keep the default hero if custom headline isn't split into two parts.
+ if (!(profile.headline||"").includes(". ")) $("#heroHeadline").innerHTML = esc(profile.headline||"Understanding policy. Improving practice.");
+ $("#heroIntro").textContent = profile.intro || "";
+ $("#locationLabel").textContent = "Based in " + (profile.location || "India");
+ $("#aboutLead").textContent = "My work and studies sit at the intersection of public institutions, frontline implementation, and social outcomes.";
+ $("#aboutBody").textContent = profile.about || "";
+ $("#degreeLine").textContent = [profile.degree, profile.undergraduate].filter(Boolean).join(" · ");
+ $("#aboutFacts").innerHTML = [
+  ["A","Education",profile.degree || "",profile.undergraduate || ""],
+  ["B","Practice","Development programmes, community engagement and public-service delivery.",""],
+  ["C","Research focus",profile.interests || "Policy, governance and development practice.",""]
+ ].map(x=>`<div class="fact-card"><span class="fact-index">${esc(x[0])}</span><div><h3>${esc(x[1])}</h3><p>${esc(x[2])}</p>${x[3]?`<p>${esc(x[3])}</p>`:""}</div></div>`).join("");
+ const experiences = data.experience || [];
+ $("#experienceList").innerHTML = experiences.length ? experiences.map((x,i)=>`<article class="timeline-item"><div class="timeline-marker">${String(i+1).padStart(2,"0")}</div><div class="timeline-main"><div class="timeline-top"><h3>${esc(x.title)}</h3><span class="timeline-tag">${esc(x.category||"EXPERIENCE")}</span></div><p class="timeline-org">${esc(x.organization||"")}${x.date?` · ${esc(x.date)}`:""}</p><p>${esc(x.summary||"")}</p>${x.role?`<p><strong>Role:</strong> ${esc(x.role)}</p>`:""}${x.status==="draft"?'<span class="status-label">Draft · verify details</span>':""}</div></article>`).join("") : '<div class="empty-state">No experience entries yet. Add them using the portfolio editor.</div>';
+ const projects = data.projects || [];
+ const categories = ["All",...new Set(projects.map(p=>p.category).filter(Boolean))];
+ $("#projectFilters").innerHTML = categories.map((c,i)=>`<button class="filter-chip ${i===0?"active":""}" data-filter="${esc(c)}">${esc(c)}</button>`).join("");
+ function projectCard(p,i){return `<article class="project-card" data-category="${esc(p.category||"Other")}"><div class="project-art" ${p.image?`style="background-image:linear-gradient(#e6edf2aa,#e6edf2aa),url('${esc(p.image)}');background-size:cover;background-position:center`:""}><span class="art-number">${String(i+1).padStart(2,"0")}</span><span class="art-label">${esc(p.category||"PROJECT")}<br>CASE STUDY</span></div><div class="project-content"><div class="project-meta"><span>${esc(p.category||"PROJECT")}</span><span>${esc(p.date||"")}</span></div><h3>${esc(p.title)}</h3><p>${esc(p.summary||"")}</p>${p.status==="draft"?'<span class="status-label">Draft · verify role & outcomes</span>':""}<br><button class="project-more" data-project="${esc(p.title)}">Explore case study ↗</button></div></article>`}
+ $("#projectGrid").innerHTML = projects.length ? projects.map(projectCard).join("") : '<div class="empty-state">No projects added yet. Use the editor to add your first case study.</div>';
+ $("#projectFilters").addEventListener("click",e=>{const b=e.target.closest("button[data-filter]");if(!b)return;$("#projectFilters").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));$("#projectGrid").querySelectorAll(".project-card").forEach(card=>card.hidden=b.dataset.filter!=="All"&&card.dataset.category!==b.dataset.filter)});
+ const backdrop=$("#modalBackdrop");
+ function openProject(title){const p=projects.find(x=>x.title===title);if(!p)return;$("#modalEyebrow").textContent=(p.category||"PROJECT").toUpperCase()+" / CASE STUDY";$("#modalTitle").textContent=p.title||"";$("#modalOrg").textContent=[p.organization,p.date].filter(Boolean).join(" · ");const body=$("#modalBody");body.innerHTML="";[[ "Overview",p.summary],["My role",p.role],["Details & learning",p.details]].forEach(([label,value])=>{if(value){const section=document.createElement("p");const strong=document.createElement("strong");strong.textContent=label+": ";section.append(strong,document.createTextNode(value));body.append(section)}});$("#modalEvidence").textContent=p.evidence?"Source / supporting document: "+p.evidence:"Add a source document or supporting link when available.";backdrop.hidden=false;document.body.style.overflow="hidden"}
+ $("#projectGrid").addEventListener("click",e=>{const b=e.target.closest("[data-project]");if(b)openProject(b.dataset.project)});
+ function closeModal(){backdrop.hidden=true;document.body.style.overflow=""}
+ $("#modalClose").addEventListener("click",closeModal);backdrop.addEventListener("click",e=>{if(e.target===backdrop)closeModal()});document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal()});
+ function renderCollection(id,items,empty){const el=$("#"+id);if(!items||!items.length){el.innerHTML=`<div class="empty-state">${esc(empty)}</div>`;return}el.innerHTML=items.map(x=>`<article class="content-card">${x.image?`<img src="${esc(x.image)}" alt="" style="width:100%;height:180px;object-fit:cover">`:""}<div class="content-card-body"><p class="eyebrow">${esc(x.category||x.organization||"NOTE")}</p><h3>${esc(x.title||"")}</h3>${x.organization?`<p><strong>${esc(x.organization)}</strong>${x.date?" · "+esc(x.date):""}</p>`:""}<p>${esc(x.summary||x.details||"")}</p>${x.status==="draft"?'<span class="status-label">Draft</span>':""}${safeUrl(x.link)?`<p><a class="text-link" href="${esc(safeUrl(x.link))}" target="_blank" rel="noreferrer">View related material ↗</a></p>`:""}</div></article>`).join("")}
+ renderCollection("fieldworkList",data.fieldwork,"Field notes will appear here when you add your first field visit or reflection.");
+ renderCollection("internshipList",data.internships,"Add internships, short-term assignments, fellowships or consulting engagements here.");
+ renderCollection("testimonialList",data.testimonials,"No testimonials added yet. Add approved quotes, names, roles and permission status in the editor.");
+ $("#researchList").innerHTML=(data.research||[]).map((x,i)=>`<article class="research-item"><span class="research-no">R/${String(i+1).padStart(2,"0")}</span><div><h3>${esc(x.title)}</h3><p>${esc(x.summary||x.details||"")}</p></div><span class="research-arrow">↗</span></article>`).join("");
+ $("#skillList").innerHTML=(data.skills||[]).map(s=>`<span class="skill-pill">${esc(typeof s==="string"?s:s.title||"")}</span>`).join("");
+ const actions=[];if(profile.email&&profile.email!=="YOUR_EMAIL@example.com")actions.push(`<a class="button button-primary" href="mailto:${esc(profile.email)}">Email me ↗</a>`);if(profile.linkedin&& !profile.linkedin.includes("YOUR-LINKEDIN"))actions.push(`<a class="button button-outline" href="${esc(safeUrl(profile.linkedin))}" target="_blank" rel="noreferrer">LinkedIn ↗</a>`);if(profile.github&&!profile.github.includes("YOUR-USERNAME"))actions.push(`<a class="button button-outline" href="${esc(safeUrl(profile.github))}" target="_blank" rel="noreferrer">GitHub ↗</a>`);if(profile.cv&&profile.cv!=="assets/cv.pdf")actions.push(`<a class="button button-outline" href="${esc(safeUrl(profile.cv))}" target="_blank">Download CV ↓</a>`);$("#contactActions").innerHTML=actions.length?actions.join(""):'<p class="contact-placeholder">Add your email, LinkedIn, GitHub and CV path in the portfolio editor.</p>';$("#contactNotice").textContent=profile.notice||"";
+ const menu=$("#menuToggle"),nav=$("#navLinks");menu.addEventListener("click",()=>nav.classList.toggle("open"));nav.querySelectorAll("a").forEach(a=>a.addEventListener("click",()=>nav.classList.remove("open")));
+ const progress=$("#scrollProgress");window.addEventListener("scroll",()=>{const max=document.documentElement.scrollHeight-innerHeight;progress.style.width=(max>0?scrollY/max*100:0)+"%"},{passive:true});
+})();
